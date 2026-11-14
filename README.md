@@ -8,4 +8,6 @@ Please [open an issue](https://github.com/everroam/lisbit-build/issues) to repor
 
 Maintainers dispatch the Release workflow manually with a version tag. Builds require approval in the release environment, and publication requires a separate approval after all builds finish.
 
-This repository contains only `.github/workflows/release.yml` and `README.md`. No source archives, Actions artifacts or GitHub Releases are published here. Downloads are served from https://lisbit.app.
+GitHub Releases here mirror the installers only. Updates and official downloads are served from https://lisbit.app.
+
+This repository contains only `.github/workflows/release.yml` and `README.md`. No source code or Actions artifacts are uploaded.
