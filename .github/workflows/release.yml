@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Version tag
-        required: true
+        description: App version tag (release and mirror only)
+        required: false
         type: string
       mode:
         description: Operation
@@ -71,6 +71,7 @@ jobs:
           if python3 scripts/release/ci.py build > "$RUNNER_TEMP/release.log" 2>&1; then
             echo 'Build completed.'
           else
+            python3 scripts/release/ci.py failure-stage 2>/dev/null || echo 'stage=config'
             echo 'Build failed.'
             exit 1
           fi
@@ -80,6 +81,7 @@ jobs:
           if python3 scripts/release/ci.py cleanup > "$RUNNER_TEMP/cleanup.log" 2>&1; then
             echo 'Cleanup completed.'
           else
+            python3 scripts/release/ci.py failure-stage 2>/dev/null || echo 'stage=config'
             echo 'Cleanup failed.'
             exit 1
           fi
@@ -118,6 +120,7 @@ jobs:
           if python3 scripts/release/ci.py "$RELEASE_OPERATION" > "$RUNNER_TEMP/release.log" 2>&1; then
             echo 'Publication completed.'
           else
+            python3 scripts/release/ci.py failure-stage 2>/dev/null || echo 'stage=config'
             echo 'Publication failed.'
             exit 1
           fi
@@ -164,6 +167,7 @@ jobs:
           if ${{ matrix.python }} scripts/release/ci.py tools-build > "$RUNNER_TEMP/tools.log" 2>&1; then
             echo 'Tools build completed.'
           else
+            ${{ matrix.python }} scripts/release/ci.py failure-stage 2>/dev/null || echo 'stage=config'
             echo 'Tools build failed.'
             exit 1
           fi
@@ -173,6 +177,7 @@ jobs:
           if ${{ matrix.python }} scripts/release/ci.py cleanup > "$RUNNER_TEMP/cleanup.log" 2>&1; then
             echo 'Cleanup completed.'
           else
+            ${{ matrix.python }} scripts/release/ci.py failure-stage 2>/dev/null || echo 'stage=config'
             echo 'Cleanup failed.'
             exit 1
           fi
@@ -205,6 +210,7 @@ jobs:
           if python3 scripts/release/ci.py tools-publish > "$RUNNER_TEMP/tools.log" 2>&1; then
             echo 'Tools publication completed.'
           else
+            python3 scripts/release/ci.py failure-stage 2>/dev/null || echo 'stage=config'
             echo 'Tools publication failed.'
             exit 1
           fi
