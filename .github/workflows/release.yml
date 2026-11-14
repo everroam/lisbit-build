@@ -7,6 +7,10 @@ on:
         description: App version tag (release and mirror only)
         required: false
         type: string
+      tools_run_id:
+        description: Existing tools run to publish without rebuilding
+        required: false
+        type: string
       mode:
         description: Operation
         type: choice
@@ -126,7 +130,7 @@ jobs:
           fi
 
   tools-build:
-    if: inputs.mode == 'tools'
+    if: inputs.mode == 'tools' && inputs.tools_run_id == ''
     permissions:
       contents: read
     environment: release
@@ -184,7 +188,7 @@ jobs:
 
   tools-publish:
     needs: tools-build
-    if: ${{ !cancelled() && inputs.mode == 'tools' && needs['tools-build'].result == 'success' }}
+    if: ${{ !cancelled() && inputs.mode == 'tools' && (inputs.tools_run_id != '' || needs['tools-build'].result == 'success' || needs['tools-build'].result == 'failure') }}
     permissions:
       contents: read
     environment: release
@@ -203,6 +207,7 @@ jobs:
           show-progress: false
       - name: Publish tools
         env:
+          TOOLS_SOURCE_RUN_ID: ${{ inputs.tools_run_id }}
           R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}

@@ -8,7 +8,7 @@ Please [open an issue](https://github.com/everroam/lisbit-build/issues) to repor
 
 Maintainers dispatch the Release workflow manually with a version tag. Builds require approval in the release environment, and publication requires a separate approval after all builds finish.
 
-An optional tools operation builds and publishes standalone speech tools through the same approvals; they are hosted on the download service. Failed operations expose only a fixed stage code, without command output or diagnostics.
+An optional tools operation builds and publishes standalone speech tools through the same approvals; they are hosted on the download service. Tool publication accepts every completed platform; to publish existing staged results without rebuilding, provide the original run ID in tools_run_id. Failed operations expose only a fixed stage code, without command output or diagnostics.
 
 GitHub Releases here mirror the installers only. Updates and official downloads are served from https://lisbit.app.
 
