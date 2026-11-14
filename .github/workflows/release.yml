@@ -10,7 +10,7 @@ on:
       mode:
         description: Operation
         type: choice
-        options: [release, mirror]
+        options: [release, mirror, tools]
         default: release
 
 permissions:
@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    if: inputs.mode != 'mirror'
+    if: inputs.mode == 'release'
     permissions:
       contents: read
     name: Build (${{ matrix.target }})
@@ -87,7 +87,7 @@ jobs:
   publish:
     name: Publish
     needs: build
-    if: ${{ !cancelled() && (inputs.mode == 'mirror' || needs.build.result == 'success') }}
+    if: ${{ !cancelled() && (inputs.mode == 'mirror' || (inputs.mode == 'release' && needs.build.result == 'success')) }}
     permissions:
       contents: write
     environment: release
@@ -119,5 +119,92 @@ jobs:
             echo 'Publication completed.'
           else
             echo 'Publication failed.'
+            exit 1
+          fi
+
+  tools-build:
+    if: inputs.mode == 'tools'
+    permissions:
+      contents: read
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {target: darwin-arm64, os: macos-latest, python: python3}
+          - {target: darwin-amd64, os: macos-15-intel, python: python3}
+          - {target: windows-amd64, os: windows-latest, python: python}
+          - {target: linux-amd64, os: ubuntu-22.04, python: python3}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: everroam/lisbit
+          ref: main
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+          show-progress: false
+      - name: Build tools
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          MACOS_CERTIFICATE: ${{ startsWith(matrix.target, 'darwin') && secrets.MACOS_CERTIFICATE || '' }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ startsWith(matrix.target, 'darwin') && secrets.MACOS_CERTIFICATE_PASSWORD || '' }}
+          APPLE_API_KEY: ${{ startsWith(matrix.target, 'darwin') && secrets.APPLE_API_KEY || '' }}
+          APPLE_API_KEY_ID: ${{ startsWith(matrix.target, 'darwin') && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ startsWith(matrix.target, 'darwin') && secrets.APPLE_API_ISSUER || '' }}
+          APPLE_TEAM_ID: ${{ startsWith(matrix.target, 'darwin') && secrets.APPLE_TEAM_ID || '' }}
+        run: |
+          if ${{ matrix.python }} scripts/release/ci.py tools-build > "$RUNNER_TEMP/tools.log" 2>&1; then
+            echo 'Tools build completed.'
+          else
+            echo 'Tools build failed.'
+            exit 1
+          fi
+      - name: Cleanup
+        if: always()
+        run: |
+          if ${{ matrix.python }} scripts/release/ci.py cleanup > "$RUNNER_TEMP/cleanup.log" 2>&1; then
+            echo 'Cleanup completed.'
+          else
+            echo 'Cleanup failed.'
+            exit 1
+          fi
+
+  tools-publish:
+    needs: tools-build
+    if: ${{ !cancelled() && inputs.mode == 'tools' && needs['tools-build'].result == 'success' }}
+    permissions:
+      contents: read
+    environment: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: everroam/lisbit
+          ref: main
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+          show-progress: false
+      - name: Publish tools
+        env:
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          if python3 scripts/release/ci.py tools-publish > "$RUNNER_TEMP/tools.log" 2>&1; then
+            echo 'Tools publication completed.'
+          else
+            echo 'Tools publication failed.'
             exit 1
           fi
